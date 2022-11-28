@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Socket.IO chat</title>
+  <style>
+    body {
+      margin: 0;
+      padding-bottom: 3rem;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    #chatForm {
+      background: rgba(0, 0, 0, 0.15);
+      padding: 0.25rem;
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      height: 3rem;
+      box-sizing: border-box;
+      backdrop-filter: blur(10px);
+    }
+
+    #chatMessage {
+      border: none;
+      padding: 0 1rem;
+      flex-grow: 1;
+      border-radius: 2rem;
+      margin: 0.25rem;
+    }
+
+    #chatMessage:focus {
+      outline: none;
+    }
+
+    #chatForm>button {
+      background: #333;
+      border: none;
+      padding: 0 1rem;
+      margin: 0.25rem;
+      border-radius: 3px;
+      outline: none;
+      color: #fff;
+    }
+
+    #messages {
+      list-style-type: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    #messages>li {
+      padding: 0.5rem 1rem;
+    }
+
+    #messages>li:nth-child(odd) {
+      background: #efefef;
+    }
+
+    #messages>li.newUser {
+      color: green;
+      font-style: italic;
+    }
+
+    #messages>li.userDisconnected {
+      color: red;
+      font-style: italic
+    }
+
+    #messages>li.self {
+      font-weight: bold;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+
+<body>
+  <h2> There are <span id="userCount"></span> users in this room. </h2>
+  <ul id="messages"></ul>
+
+  <form id="nameForm" action="">
+    <label>Choose a nickname to join the chat: <input id="nickname" autocomplete="off" /></label><button>Send</button>
+  </form>
+
+  <form id="chatForm" action="" class="hidden">
+    <input id="chatMessage" autocomplete="off" /><button>Send</button>
+  </form>
+
+  <script src="/socket.io/socket.io.js"></script> 
+  <!-- <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script> -->
+  <script>
+    var socket = io(); //socket is created here same one used all over index.html
+
+    var messages = document.getElementById('messages');
+    var chatForm = document.getElementById('chatForm');
+    var chatMessage = document.getElementById('chatMessage');
+    var nickname = document.getElementById('nickname');
+    let userCount = 0;
+
+    window.onload = () => socket.emit('new user') 
+
+    function printMsg(msg) { //after socket recieves information for chat message
+      var item = document.createElement('li');
+      item.textContent = (msg.nickname) ? msg.nickname + ': ' + msg.text : msg.text;
+      item.className = msgClass + ((msg.nickname == nickname.value) ? ' self' : '')
+      messages.appendChild(item);
+      window.scrollTo(0, document.body.scrollHeight);
+    }
+    
+    //updates the count of total user in the chat
+    function updateUserCount(userCount) {
+        document.getElementById("userCount").innerHTML = userCount;
+  
+    }
+
+    chatForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (chatMessage.value) {
+        socket.emit('chat message', { nickname: nickname.value, text: chatMessage.value + "hellotext" });
+        chatMessage.value = '';
+      }
+    });
+
+    nameForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      if (nickname.value) {
+        socket.emit('choose name', "new user: " +nickname.value); //name of the event(always a string), 2nd param can be object (object can be string, not function)
+        nameForm.className = 'hidden' //remove name form once chosen
+        chatForm.className = '' //and show chat form by removing hidden class
+      }
+    });
+    //The socket argument of the connection event listener callback function is an object that represents an incoming socket connection from a client.
+    socket.on('new user', (msg) => {updateUserCount(msg.userCount); printMsg(msg, 'newUser') }) //name of the event (string), 2nd param is callback method, in this case
+    //i call two functions
+    socket.on('disconnected', (msg) => {updateUserCount(msg.userCount); printMsg(msg, 'userDisconnected')})
+    socket.on('chat message', (msg) => {printMsg(msg)}) //chatMsg was for css but i dont use it anymore
+
+  </script>
+</body>
+
+</html>
